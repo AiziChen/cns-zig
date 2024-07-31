@@ -19,7 +19,7 @@ fn handle_connection(conn: std.net.Server.Connection) void {
     var buffer: [4096]u8 = undefined;
 
     while (true) {
-        const size: usize = conn.stream.readAll(&buffer) catch |err| {
+        const size: usize = conn.stream.read(&buffer) catch |err| {
             std.debug.print("read error: {any}\n", .{err});
             return;
         };

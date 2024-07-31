@@ -1,16 +1,18 @@
 const std = @import("std");
-const Regex = @import("regex").Regex;
 const tools = @import("tools.zig");
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
 pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8) !void {
-    var regex = try Regex.compile(allocator, "Meng:\\s*(.+)\n");
-    regex.deinit();
-    const proxyOrNull = try get_proxy(&regex, header);
+    // var proxyBuffer: [256]u8 = undefined;
+    const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
-        var host_port = std.mem.split(u8, proxy, ":");
+        var proxy_buffer: [128]u8 = undefined;
+        const decoder = std.base64.standard.Decoder;
+        const decoded_size = try decoder.calcSizeForSlice(proxy);
+        try decoder.decode(proxy_buffer[0..decoded_size], proxy);
+        var host_port = std.mem.split(u8, proxy_buffer[0..decoded_size], ":");
         const host = host_port.first();
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
@@ -19,19 +21,19 @@ pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8)
             var client = std.http.Client{
                 .allocator = allocator,
             };
+            defer client.deinit();
             const connection = try client.connect(host, uport, .plain);
-            _ = try std.Thread.spawn(.{}, tcp_forward, .{ &client, connection.stream, server.stream });
-            _ = try std.Thread.spawn(.{}, tcp_forward, .{ &client, server.stream, connection.stream });
+            const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ connection.stream, server.stream });
+            const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server.stream, connection.stream });
+            t1.join();
+            t2.join();
+            connection.stream.close();
+            server.stream.close();
         }
     }
 }
 
-fn tcp_forward(
-    client: *std.http.Client,
-    clientStream: std.net.Stream,
-    serverStream: std.net.Stream,
-) !void {
-    defer client.deinit();
+fn tcp_forward(clientStream: std.net.Stream, serverStream: std.net.Stream) !void {
     defer clientStream.close();
     defer serverStream.close();
     var buffer = try allocator.alloc(u8, 4096);
@@ -46,12 +48,15 @@ fn tcp_forward(
         _ = try serverStream.write(buffer[0..rsize]);
     }
 }
-fn get_proxy(regex: *Regex, header: *const []const u8) !?[]const u8 {
-    if (try regex.captures(header.*)) |capture| {
-        if (capture.len() == 2) {
-            if (capture.sliceAt(1)) |content| {
-                return content;
-            }
+
+pub fn get_proxy(header: *const []const u8) ?[]const u8 {
+    if (std.mem.containsAtLeast(u8, header.*, 1, "Meng:")) {
+        var firstSplit = std.mem.split(u8, header.*, "Meng:");
+        _ = firstSplit.first();
+        const proxyLastOrNull = firstSplit.next();
+        if (proxyLastOrNull) |proxyLast| {
+            var nextSplit = std.mem.split(u8, proxyLast, "\r");
+            return std.mem.trim(u8, nextSplit.first(), " ");
         }
     }
     return null;
