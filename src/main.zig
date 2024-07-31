@@ -4,7 +4,7 @@ const tools = @import("tools.zig");
 const tcp = @import("tcp.zig");
 
 pub fn main() !void {
-    const address = try std.net.Address.parseIp("127.0.0.1", 3000);
+    const address = try std.net.Address.parseIp("127.0.0.1", 1080);
     var http_server = try address.listen(.{
         .reuse_address = true,
     });
@@ -16,7 +16,6 @@ pub fn main() !void {
 }
 
 fn handle_connection(conn: std.net.Server.Connection) void {
-    defer conn.stream.close();
     var buffer: [4096]u8 = undefined;
 
     while (true) {
