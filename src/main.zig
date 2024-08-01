@@ -24,13 +24,14 @@ fn handle_connection(conn: std.net.Server.Connection) void {
             return;
         };
         if (size <= 0) {
-            std.debug.print("connection has been closed\n", .{});
+            std.debug.print("Connection closed earlier\n", .{});
             return;
         } else {
             std.debug.print("Handle http request...\n", .{});
             conn.stream.writeAll(tools.response_header(&buffer[0..size])) catch continue;
             if (!std.mem.containsAtLeast(u8, buffer[0..size], 1, "httpUDP")) {
                 tcp.process_tcp(conn, &buffer[0..size]) catch continue;
+                std.debug.print("Connection has been closed\n", .{});
             }
         }
     }
