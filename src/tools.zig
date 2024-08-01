@@ -25,17 +25,16 @@ pub fn response_header(header: *const []const u8) []const u8 {
     }
 }
 
-pub fn xor_cipher(data: *[]u8, data_len: usize, pass_sub: usize) usize {
+pub fn xor_cipher(data: *[]u8, data_len: usize, pass_sub: u8) u8 {
     if (data_len <= 0) {
         return pass_sub;
     } else {
         const pass_len: u8 = "quanyec".len;
-        var pi: u8 = @intCast(pass_sub);
+        var pi = pass_sub;
         for (0..data_len) |data_sub| {
-            const rs: u8 = @intCast(data_sub + pass_sub);
-            pi = rs % pass_len;
+            pi = @intCast((data_sub + pass_sub) % pass_len);
             data.*[data_sub] ^= "quanyec"[pi] | pi;
         }
-        return pi;
+        return pi + 1;
     }
 }

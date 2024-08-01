@@ -5,7 +5,6 @@ var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
 pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8) !void {
-    // var proxyBuffer: [256]u8 = undefined;
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer = try allocator.alloc(u8, 128);
@@ -18,8 +17,7 @@ pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8)
         const host = host_port.first();
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
-            const uport = try std.fmt.parseInt(u8, port, 10);
-            // const uri = try std.Uri.parse(host_port);
+            const uport = try std.fmt.parseInt(u16, port[0 .. port.len - 1], 10);
             var client = std.http.Client{
                 .allocator = allocator,
             };
@@ -36,9 +34,9 @@ pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8)
 }
 
 fn tcp_forward(clientStream: std.net.Stream, serverStream: std.net.Stream) !void {
-    var buffer = try allocator.alloc(u8, 4096);
+    var buffer = try allocator.alloc(u8, 32768);
     defer allocator.free(buffer);
-    var subi: usize = 0;
+    var subi: u8 = 0;
     while (true) {
         const rsize = try clientStream.read(buffer);
         if (rsize <= 0) {
