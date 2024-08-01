@@ -12,7 +12,7 @@ pub fn process_tcp(server: std.net.Stream, header: *const []const u8) !void {
         const decoder = std.base64.standard.Decoder;
         const decoded_size = try decoder.calcSizeForSlice(proxy);
         try decoder.decode(proxy_buffer[0..decoded_size], proxy);
-        _ = tools.xor_cipher(&proxy_buffer, decoded_size, 0);
+        _ = tools.xor_cipher(proxy_buffer, decoded_size, 0);
         var host_port = std.mem.split(u8, proxy_buffer[0 .. decoded_size - 1], ":");
         const host = host_port.first();
         const portOrNull = host_port.next();
@@ -29,11 +29,10 @@ pub fn process_tcp(server: std.net.Stream, header: *const []const u8) !void {
 }
 
 fn tcp_forward(fromStream: std.net.Stream, toStream: std.net.Stream) !void {
-    var buffer = try allocator.alloc(u8, 8192);
-    defer allocator.free(buffer);
+    var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
-        const rsize = try fromStream.read(buffer);
+        const rsize = try fromStream.read(&buffer);
         if (rsize <= 0) {
             break;
         }
