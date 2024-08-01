@@ -6,6 +6,7 @@ const tcp = @import("tcp.zig");
 pub fn main() !void {
     const address = try std.net.Address.parseIp("0.0.0.0", 1080);
     var http_server = try address.listen(.{
+        .kernel_backlog = 1024,
         .reuse_address = true,
     });
 
@@ -17,7 +18,7 @@ pub fn main() !void {
 
 fn handle_connection(conn: std.net.Server.Connection) void {
     var buffer: [4096]u8 = undefined;
-
+    defer conn.stream.close();
     while (true) {
         const size: usize = conn.stream.read(&buffer) catch |err| {
             std.debug.print("read error: {any}\n", .{err});

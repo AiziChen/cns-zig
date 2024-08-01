@@ -13,28 +13,27 @@ pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8)
         const decoded_size = try decoder.calcSizeForSlice(proxy);
         try decoder.decode(proxy_buffer[0..decoded_size], proxy);
         _ = tools.xor_cipher(&proxy_buffer, decoded_size, 0);
-        var host_port = std.mem.split(u8, proxy_buffer[0..decoded_size], ":");
+        var host_port = std.mem.split(u8, proxy_buffer[0 .. decoded_size - 1], ":");
         const host = host_port.first();
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
-            const uport = try std.fmt.parseInt(u16, port[0 .. port.len - 1], 10);
+            const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
             var client = std.http.Client{
                 .allocator = allocator,
             };
             defer client.deinit();
             const connection = try client.connect(host, uport, .plain);
+            defer connection.close(allocator);
             const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ connection.stream, server.stream });
             const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server.stream, connection.stream });
             t1.join();
             t2.join();
-            connection.stream.close();
-            server.stream.close();
         }
     }
 }
 
 fn tcp_forward(clientStream: std.net.Stream, serverStream: std.net.Stream) !void {
-    var buffer = try allocator.alloc(u8, 32768);
+    var buffer = try allocator.alloc(u8, 8192);
     defer allocator.free(buffer);
     var subi: u8 = 0;
     while (true) {
