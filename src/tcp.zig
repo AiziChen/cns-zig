@@ -4,7 +4,7 @@ const tools = @import("tools.zig");
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
-pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8) !void {
+pub fn process_tcp(server: std.net.Stream, header: *const []const u8) !void {
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer = try allocator.alloc(u8, 128);
@@ -18,31 +18,27 @@ pub fn process_tcp(server: std.net.Server.Connection, header: *const []const u8)
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
-            var client = std.http.Client{
-                .allocator = allocator,
-            };
-            defer client.deinit();
-            const connection = try client.connect(host, uport, .plain);
-            defer connection.close(allocator);
-            const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ connection.stream, server.stream });
-            const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server.stream, connection.stream });
+            var client = try std.net.tcpConnectToAddress(try std.net.Address.parseIp(host, uport));
+            defer client.close();
+            const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ client, server });
+            const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server, client });
             t1.join();
             t2.join();
         }
     }
 }
 
-fn tcp_forward(clientStream: std.net.Stream, serverStream: std.net.Stream) !void {
+fn tcp_forward(fromStream: std.net.Stream, toStream: std.net.Stream) !void {
     var buffer = try allocator.alloc(u8, 8192);
     defer allocator.free(buffer);
     var subi: u8 = 0;
     while (true) {
-        const rsize = try clientStream.read(buffer);
+        const rsize = try fromStream.read(buffer);
         if (rsize <= 0) {
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        _ = try serverStream.write(buffer[0..rsize]);
+        _ = try toStream.write(buffer[0..rsize]);
     }
 }
 

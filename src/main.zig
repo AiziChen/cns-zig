@@ -12,15 +12,15 @@ pub fn main() !void {
 
     while (true) {
         const conn = try http_server.accept();
-        _ = try std.Thread.spawn(.{}, handle_connection, .{conn});
+        _ = try std.Thread.spawn(.{}, handle_connection, .{conn.stream});
     }
 }
 
-fn handle_connection(conn: std.net.Server.Connection) void {
+fn handle_connection(conn: std.net.Stream) void {
     var buffer: [4096]u8 = undefined;
-    defer conn.stream.close();
+    defer conn.close();
     while (true) {
-        const size: usize = conn.stream.read(&buffer) catch |err| {
+        const size: usize = conn.read(&buffer) catch |err| {
             std.debug.print("read error: {any}\n", .{err});
             return;
         };
@@ -29,7 +29,7 @@ fn handle_connection(conn: std.net.Server.Connection) void {
             return;
         } else {
             std.debug.print("Handle http request...\n", .{});
-            conn.stream.writeAll(tools.response_header(&buffer[0..size])) catch continue;
+            conn.writeAll(tools.response_header(&buffer[0..size])) catch continue;
             if (!std.mem.containsAtLeast(u8, buffer[0..size], 1, "httpUDP")) {
                 tcp.process_tcp(conn, &buffer[0..size]) catch continue;
                 std.debug.print("Connection has been closed\n", .{});
