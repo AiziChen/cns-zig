@@ -15,7 +15,7 @@ pub fn process_tcp(server: std.net.Stream, header: []const u8) !void {
         if (portOrNull) |port| {
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
             var client = std.net.tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
-                try server.writeAll(std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
+                try server.writeAll(try std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
                 return;
             };
             defer client.close();
@@ -25,7 +25,7 @@ pub fn process_tcp(server: std.net.Stream, header: []const u8) !void {
             t2.join();
         }
     } else {
-        server.writeAll("No proxy host");
+        try server.writeAll("No proxy host");
     }
 }
 
