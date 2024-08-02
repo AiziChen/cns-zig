@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const HEADERS = .{ "CONNECT", "GET", "POST", "HEAD", "PUT", "COPY", "DELETE", "MOVE", "OPTIONS", "LINK", "UNLINK", "TRACE", "WRAPPER" };
+const HEADERS = [_][]const u8{ "CONNECT", "GET", "POST", "HEAD", "PUT", "COPY", "DELETE", "MOVE", "OPTIONS", "LINK", "UNLINK", "TRACE", "WRAPPER" };
 
 pub fn is_http_header(header: []const u8) bool {
     for (HEADERS) |h| {
