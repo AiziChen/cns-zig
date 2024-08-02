@@ -4,7 +4,7 @@ const HEADERS = [_][]const u8{ "CONNECT", "GET", "POST", "HEAD", "PUT", "COPY", 
 
 pub fn is_http_header(header: []const u8) bool {
     for (HEADERS) |h| {
-        if (std.mem.startsWith(u8, h, header)) {
+        if (std.mem.startsWith(u8, header, h)) {
             return true;
         }
     }

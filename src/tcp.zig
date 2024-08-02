@@ -1,7 +1,7 @@
 const std = @import("std");
 const tools = @import("tools.zig");
 
-pub fn process_tcp(server: std.net.Stream, header: *const []const u8) !void {
+pub fn process_tcp(server: std.net.Stream, header: []const u8) !void {
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer: [128]u8 = undefined;
@@ -37,9 +37,9 @@ fn tcp_forward(fromStream: std.net.Stream, toStream: std.net.Stream) !void {
     }
 }
 
-pub fn get_proxy(header: *const []const u8) ?[]const u8 {
-    if (std.mem.containsAtLeast(u8, header.*, 1, "Meng:")) {
-        var firstSplit = std.mem.split(u8, header.*, "Meng:");
+pub fn get_proxy(header: []const u8) ?[]const u8 {
+    if (std.mem.containsAtLeast(u8, header, 1, "Meng:")) {
+        var firstSplit = std.mem.split(u8, header, "Meng:");
         _ = firstSplit.first();
         const proxyLastOrNull = firstSplit.next();
         if (proxyLastOrNull) |proxyLast| {
