@@ -14,13 +14,18 @@ pub fn process_tcp(server: std.net.Stream, header: []const u8) !void {
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
-            var client = try std.net.tcpConnectToAddress(try std.net.Address.parseIp(host, uport));
+            var client = std.net.tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
+                try server.writeAll(std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
+                return;
+            };
             defer client.close();
             const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ client, server });
             const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server, client });
             t1.join();
             t2.join();
         }
+    } else {
+        server.writeAll("No proxy host");
     }
 }
 
