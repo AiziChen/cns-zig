@@ -1,24 +1,22 @@
 const std = @import("std");
 
-const WEBSOCKET = "websocket";
-
 const HEADERS = .{ "CONNECT", "GET", "POST", "HEAD", "PUT", "COPY", "DELETE", "MOVE", "OPTIONS", "LINK", "UNLINK", "TRACE", "WRAPPER" };
 
-pub fn is_http_header(header: *const []const u8) bool {
+pub fn is_http_header(header: []const u8) bool {
     for (HEADERS) |h| {
-        if (std.mem.startsWith(u8, h, *header)) {
+        if (std.mem.startsWith(u8, h, header)) {
             return true;
         }
     }
     return false;
 }
 
-pub fn response_header(header: *const []const u8) []const u8 {
+pub fn response_header(header: []const u8) []const u8 {
     var buffer: [4096]u8 = undefined;
-    _ = std.ascii.lowerString(&buffer, header.*);
-    if (std.mem.containsAtLeast(u8, &buffer, 1, WEBSOCKET)) {
+    const lowercase_header = std.ascii.lowerString(&buffer, header);
+    if (std.mem.containsAtLeast(u8, &lowercase_header, 1, "websocket")) {
         return "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: CuteBi Network Tunnel, (%>w<%)\r\n\r\n";
-    } else if (std.mem.startsWith(u8, &buffer, "connect")) {
+    } else if (std.mem.startsWith(u8, &lowercase_header, "connect")) {
         return "HTTP/1.1 200 Connection established\r\nServer: CuteBi Network Tunnel, (%>w<%)\r\nConnection: keep-alive\r\n\r\n";
     } else {
         return "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nServer: CuteBi Network Tunnel, (%>w<%)\r\nConnection: keep-alive\r\n\r\n";
