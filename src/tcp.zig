@@ -1,9 +1,6 @@
 const std = @import("std");
 const tools = @import("tools.zig");
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
-
 pub fn process_tcp(server: std.net.Stream, header: *const []const u8) !void {
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
