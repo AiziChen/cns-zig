@@ -18,6 +18,7 @@ pub fn main() !void {
 fn handle_connection(conn: std.net.Stream) !void {
     var buffer: [4096]u8 = undefined;
     defer conn.close();
+    defer std.debug.print("Connection has been closed\n", .{});
     const size: usize = conn.read(&buffer) catch |err| {
         std.debug.print("read error: {any}\n", .{err});
         return;
@@ -33,7 +34,6 @@ fn handle_connection(conn: std.net.Stream) !void {
             try conn.writeAll(tools.response_header(data));
             if (!std.mem.containsAtLeast(u8, data, 1, "httpUDP")) {
                 try tcp.process_tcp(conn, data);
-                std.debug.print("Connection has been closed\n", .{});
             }
         } else {
             // handle tcp request
