@@ -33,7 +33,7 @@ fn tcp_forward(fromStream: std.net.Stream, toStream: std.net.Stream) !void {
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        _ = try toStream.write(buffer[0..rsize]);
+        try toStream.writeAll(buffer[0..rsize]);
     }
 }
 
