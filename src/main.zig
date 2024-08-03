@@ -25,7 +25,6 @@ fn handle_connection(conn: std.net.Stream) !void {
     };
     if (size <= 0) {
         std.debug.print("Connection closed earlier\n", .{});
-        return;
     } else {
         const data = buffer[0..size];
         if (tools.is_http_header(data)) {
@@ -33,7 +32,7 @@ fn handle_connection(conn: std.net.Stream) !void {
             std.debug.print("Handle http request...\n", .{});
             try conn.writeAll(tools.response_header(data));
             if (!std.mem.containsAtLeast(u8, data, 1, "httpUDP")) {
-                try tcp.process_tcp(conn, data);
+                try tcp.process_tcp(&conn, data);
             }
         } else {
             // handle tcp request
