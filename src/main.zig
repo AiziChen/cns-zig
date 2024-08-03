@@ -4,6 +4,7 @@ const builtin = @import("builtin");
 const tools = @import("tools.zig");
 const tcp = @import("tcp.zig");
 const c = @cImport({
+    @cInclude("stdio.h");
     @cInclude("posix-extends.c");
 });
 

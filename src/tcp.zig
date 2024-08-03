@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const posix = std.posix;
 const tools = @import("tools.zig");
 const c = @cImport({
+    @cInclude("stdio.h");
     @cInclude("posix-extends.c");
 });
 

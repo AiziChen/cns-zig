@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "c-src" } });
-    if (target.isNativeOs() and target.getOsTag() == .linux) {
+    if (target.query.isNativeOs() and target.query.os_tag == .linux) {
         exe.linkLibC();
     }
 
