@@ -3,6 +3,9 @@ const posix = std.posix;
 const builtin = @import("builtin");
 const tools = @import("tools.zig");
 const tcp = @import("tcp.zig");
+const c = @cImport({
+    @cInclude("posix-extends.c");
+});
 
 pub fn main() !void {
     const address = try std.net.Address.parseIp("0.0.0.0", 1080);
@@ -82,6 +85,12 @@ fn listen(address: *const std.net.Address, options: std.net.Address.ListenOption
         posix.SO.KEEPALIVE,
         &std.mem.toBytes(@as(c_int, 0)),
     );
+    if (c.so_rectimeo2zero(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.so_sndtimeo2zero(sockfd) < 0) {
+        return error.Unexpected;
+    }
 
     var socklen = address.getOsSockLen();
     try posix.bind(sockfd, &address.any, socklen);

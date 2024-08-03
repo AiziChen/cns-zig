@@ -2,6 +2,9 @@ const std = @import("std");
 const builtin = @import("builtin");
 const posix = std.posix;
 const tools = @import("tools.zig");
+const c = @cImport({
+    @cInclude("posix-extends.c");
+});
 
 pub fn process_tcp(server: *const std.net.Stream, header: []const u8) !void {
     const proxyOrNull = get_proxy(header);
@@ -76,6 +79,13 @@ fn tcpConnectToAddress(address: std.net.Address) std.net.TcpConnectToAddressErro
         posix.SO.KEEPALIVE,
         &std.mem.toBytes(@as(c_int, 0)),
     ) catch return error.Unexpected;
+
+    if (c.so_rectimeo2zero(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.so_sndtimeo2zero(sockfd) < 0) {
+        return error.Unexpected;
+    }
 
     try posix.connect(sockfd, &address.any, address.getOsSockLen());
 
