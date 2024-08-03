@@ -36,9 +36,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.addIncludePath(.{ .src_path = .{ .owner = b, .sub_path = "c-src" } });
-    if (target.query.isNativeOs() and target.query.os_tag == .linux) {
-        exe.linkLibC();
-    }
+    exe.linkLibC();
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

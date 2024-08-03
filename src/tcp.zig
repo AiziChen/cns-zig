@@ -50,7 +50,7 @@ fn tcp_forward(fromStream: *const std.net.Stream, toStream: *const std.net.Strea
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        try toStream.writeAll(buffer[0..rsize]);
+        try toStream.writer().writeAll(buffer[0..rsize]);
     }
 }
 
@@ -87,7 +87,15 @@ fn tcpConnectToAddress(address: std.net.Address) std.net.TcpConnectToAddressErro
     if (c.so_sndtimeo2zero(sockfd) < 0) {
         return error.Unexpected;
     }
-
+    if (c.keepinterval(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.tcp_keepalive(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.tcp_keepcnt(sockfd) < 0) {
+        return error.Unexpected;
+    }
     try posix.connect(sockfd, &address.any, address.getOsSockLen());
 
     return std.net.Stream{ .handle = sockfd };

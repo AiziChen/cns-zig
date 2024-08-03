@@ -86,10 +86,20 @@ fn listen(address: *const std.net.Address, options: std.net.Address.ListenOption
         posix.SO.KEEPALIVE,
         &std.mem.toBytes(@as(c_int, 0)),
     );
+
     if (c.so_rectimeo2zero(sockfd) < 0) {
         return error.Unexpected;
     }
     if (c.so_sndtimeo2zero(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.keepinterval(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.tcp_keepalive(sockfd) < 0) {
+        return error.Unexpected;
+    }
+    if (c.tcp_keepcnt(sockfd) < 0) {
         return error.Unexpected;
     }
 
