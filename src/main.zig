@@ -11,20 +11,22 @@ pub fn main() !void {
 
     while (true) {
         const conn = try http_server.accept();
+        errdefer conn.stream.close();
         _ = try std.Thread.spawn(.{}, handle_connection, .{conn.stream});
     }
 }
 
 fn handle_connection(conn: std.net.Stream) !void {
+    errdefer conn.close();
     var buffer: [4096]u8 = undefined;
-    defer conn.close();
     defer std.debug.print("Connection has been closed\n", .{});
-    const size: usize = conn.read(&buffer) catch |err| {
+    const size = conn.read(&buffer) catch |err| {
         std.debug.print("read error: {any}\n", .{err});
         return;
     };
-    if (size <= 0) {
+    if (size == 0) {
         std.debug.print("Connection closed earlier\n", .{});
+        return error.ConnectionCloseEarlier;
     } else {
         const data = buffer[0..size];
         if (tools.is_http_header(data)) {
@@ -36,6 +38,7 @@ fn handle_connection(conn: std.net.Stream) !void {
             }
         } else {
             // handle tcp request
+            defer conn.close();
         }
     }
 }

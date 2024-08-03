@@ -18,6 +18,7 @@ pub fn process_tcp(server: *const std.net.Stream, header: []const u8) !void {
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
             var client = tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
                 try server.writeAll(try std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
+                server.close();
                 return;
             };
             errdefer client.close();
@@ -27,15 +28,16 @@ pub fn process_tcp(server: *const std.net.Stream, header: []const u8) !void {
             t2.join();
         } else {
             try server.writeAll("No proxy host");
+            server.close();
         }
     } else {
         try server.writeAll("No proxy host");
+        server.close();
     }
 }
 
 fn tcp_forward(fromStream: *const std.net.Stream, toStream: *const std.net.Stream) !void {
     defer fromStream.close();
-    defer toStream.close();
     var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
