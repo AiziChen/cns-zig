@@ -93,15 +93,6 @@ fn listen(address: *const std.net.Address, options: std.net.Address.ListenOption
     if (c.so_sndtimeo2zero(sockfd) < 0) {
         return error.Unexpected;
     }
-    if (c.keepinterval(sockfd) < 0) {
-        return error.Unexpected;
-    }
-    if (c.tcp_keepalive(sockfd) < 0) {
-        return error.Unexpected;
-    }
-    if (c.tcp_keepcnt(sockfd) < 0) {
-        return error.Unexpected;
-    }
 
     var socklen = address.getOsSockLen();
     try posix.bind(sockfd, &address.any, socklen);

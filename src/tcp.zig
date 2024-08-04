@@ -87,15 +87,6 @@ fn tcpConnectToAddress(address: std.net.Address) std.net.TcpConnectToAddressErro
     if (c.so_sndtimeo2zero(sockfd) < 0) {
         return error.Unexpected;
     }
-    if (c.keepinterval(sockfd) < 0) {
-        return error.Unexpected;
-    }
-    if (c.tcp_keepalive(sockfd) < 0) {
-        return error.Unexpected;
-    }
-    if (c.tcp_keepcnt(sockfd) < 0) {
-        return error.Unexpected;
-    }
     try posix.connect(sockfd, &address.any, address.getOsSockLen());
 
     return std.net.Stream{ .handle = sockfd };
