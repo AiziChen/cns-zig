@@ -25,9 +25,8 @@ pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !voi
                 clientStream.close();
                 return;
             };
-            errdefer tcpStream.close();
             _ = try std.Thread.spawn(.{}, tcp_forward, .{ &tcpStream, clientStream });
-            try client_forward(clientStream, tcpStream);
+            try client_forward(clientStream, &tcpStream);
         } else {
             try clientStream.writeAll("No proxy host");
             clientStream.close();
@@ -39,32 +38,42 @@ pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !voi
 }
 
 fn tcp_forward(tcpStream: *const std.net.Stream, clientStream: *const std.net.Stream) !void {
-    errdefer clientStream.close();
     var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
-        const rsize = try tcpStream.read(&buffer);
+        const rsize = tcpStream.read(&buffer) catch {
+            clientStream.close();
+            return;
+        };
         if (rsize == 0) {
             clientStream.close();
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        try clientStream.writer().writeAll(buffer[0..rsize]);
+        clientStream.writer().writeAll(buffer[0..rsize]) catch {
+            tcpStream.close();
+            return;
+        };
     }
 }
 
 fn client_forward(clientStream: *const std.net.Stream, tcpStream: *const std.net.Stream) !void {
-    errdefer tcpStream.close();
     var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
-        const rsize = try clientStream.read(&buffer);
+        const rsize = clientStream.read(&buffer) catch {
+            tcpStream.close();
+            return;
+        };
         if (rsize == 0) {
             tcpStream.close();
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        try tcpStream.writer().writeAll(buffer[0..rsize]);
+        try tcpStream.writer().writeAll(buffer[0..rsize]) catch {
+            clientStream.close();
+            return;
+        };
     }
 }
 
