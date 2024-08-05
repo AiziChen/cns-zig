@@ -8,7 +8,6 @@ const c = @cImport({
 });
 
 pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !void {
-    defer clientStream.close();
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer: [128]u8 = undefined;
@@ -45,7 +44,7 @@ fn tcp_forward(fromStream: *const std.net.Stream, toStream: *const std.net.Strea
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        try toStream.writer().writeAll(buffer[0..rsize]);
+        try toStream.writeAll(buffer[0..rsize]);
     }
 }
 
