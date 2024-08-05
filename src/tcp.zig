@@ -8,6 +8,7 @@ const c = @cImport({
 });
 
 pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !void {
+    defer clientStream.close();
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer: [128]u8 = undefined;
@@ -22,58 +23,29 @@ pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !voi
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
             var tcpStream = tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
                 try clientStream.writeAll(try std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
-                clientStream.close();
                 return;
             };
+            defer tcpStream.close();
             _ = try std.Thread.spawn(.{}, tcp_forward, .{ &tcpStream, clientStream });
-            try client_forward(clientStream, &tcpStream);
+            try tcp_forward(clientStream, &tcpStream);
         } else {
             try clientStream.writeAll("No proxy host");
-            clientStream.close();
         }
     } else {
         try clientStream.writeAll("No proxy host");
-        clientStream.close();
     }
 }
 
-fn tcp_forward(tcpStream: *const std.net.Stream, clientStream: *const std.net.Stream) !void {
+fn tcp_forward(fromStream: *const std.net.Stream, toStream: *const std.net.Stream) !void {
     var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
-        const rsize = tcpStream.read(&buffer) catch {
-            clientStream.close();
-            return;
-        };
+        const rsize = try fromStream.read(&buffer);
         if (rsize == 0) {
-            clientStream.close();
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        clientStream.writer().writeAll(buffer[0..rsize]) catch {
-            tcpStream.close();
-            return;
-        };
-    }
-}
-
-fn client_forward(clientStream: *const std.net.Stream, tcpStream: *const std.net.Stream) !void {
-    var buffer: [8192]u8 = undefined;
-    var subi: u8 = 0;
-    while (true) {
-        const rsize = clientStream.read(&buffer) catch {
-            tcpStream.close();
-            return;
-        };
-        if (rsize == 0) {
-            tcpStream.close();
-            break;
-        }
-        subi = tools.xor_cipher(&buffer, rsize, subi);
-        try tcpStream.writer().writeAll(buffer[0..rsize]) catch {
-            clientStream.close();
-            return;
-        };
+        try toStream.writer().writeAll(buffer[0..rsize]);
     }
 }
 

@@ -40,7 +40,9 @@ fn handle_connection(conn: std.net.Stream) !void {
             std.debug.print("Handle http request...\n", .{});
             try conn.writeAll(tools.response_header(data));
             if (!std.mem.containsAtLeast(u8, data, 1, "httpUDP")) {
-                try tcp.process_tcp(&conn, data);
+                tcp.process_tcp(&conn, data) catch {
+                    return;
+                };
             }
         } else {
             // handle tcp request
