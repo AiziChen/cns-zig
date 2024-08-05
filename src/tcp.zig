@@ -7,7 +7,7 @@ const c = @cImport({
     @cInclude("posix-extends.c");
 });
 
-pub fn process_tcp(server: *const std.net.Stream, header: []const u8) !void {
+pub fn process_tcp(clientStream: *const std.net.Stream, header: []const u8) !void {
     const proxyOrNull = get_proxy(header);
     if (proxyOrNull) |proxy| {
         var proxy_buffer: [128]u8 = undefined;
@@ -20,37 +20,51 @@ pub fn process_tcp(server: *const std.net.Stream, header: []const u8) !void {
         const portOrNull = host_port.next();
         if (portOrNull) |port| {
             const uport = try std.fmt.parseInt(u16, port[0..port.len], 10);
-            var client = tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
-                try server.writeAll(try std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
-                server.close();
+            var tcpStream = tcpConnectToAddress(try std.net.Address.parseIp(host, uport)) catch {
+                try clientStream.writeAll(try std.fmt.bufPrint(&proxy_buffer, "Proxy address [{s}:{s}] ResolveTCP() error", .{ host, port }));
+                clientStream.close();
                 return;
             };
-            errdefer client.close();
-            const t1 = try std.Thread.spawn(.{}, tcp_forward, .{ &client, server });
-            const t2 = try std.Thread.spawn(.{}, tcp_forward, .{ server, &client });
-            t1.join();
-            t2.join();
+            errdefer tcpStream.close();
+            _ = try std.Thread.spawn(.{}, tcp_forward, .{ &tcpStream, clientStream });
+            try client_forward(clientStream, tcpStream);
         } else {
-            try server.writeAll("No proxy host");
-            server.close();
+            try clientStream.writeAll("No proxy host");
+            clientStream.close();
         }
     } else {
-        try server.writeAll("No proxy host");
-        server.close();
+        try clientStream.writeAll("No proxy host");
+        clientStream.close();
     }
 }
 
-fn tcp_forward(fromStream: *const std.net.Stream, toStream: *const std.net.Stream) !void {
-    defer fromStream.close();
+fn tcp_forward(tcpStream: *const std.net.Stream, clientStream: *const std.net.Stream) !void {
+    errdefer clientStream.close();
     var buffer: [8192]u8 = undefined;
     var subi: u8 = 0;
     while (true) {
-        const rsize = try fromStream.read(&buffer);
+        const rsize = try tcpStream.read(&buffer);
         if (rsize == 0) {
+            clientStream.close();
             break;
         }
         subi = tools.xor_cipher(&buffer, rsize, subi);
-        try toStream.writer().writeAll(buffer[0..rsize]);
+        try clientStream.writer().writeAll(buffer[0..rsize]);
+    }
+}
+
+fn client_forward(clientStream: *const std.net.Stream, tcpStream: *const std.net.Stream) !void {
+    errdefer tcpStream.close();
+    var buffer: [8192]u8 = undefined;
+    var subi: u8 = 0;
+    while (true) {
+        const rsize = try clientStream.read(&buffer);
+        if (rsize == 0) {
+            tcpStream.close();
+            break;
+        }
+        subi = tools.xor_cipher(&buffer, rsize, subi);
+        try tcpStream.writer().writeAll(buffer[0..rsize]);
     }
 }
 
